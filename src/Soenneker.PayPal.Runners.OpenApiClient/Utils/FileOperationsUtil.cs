@@ -8,7 +8,6 @@ using Soenneker.OpenApi.Merger.Abstract;
 using Soenneker.PayPal.Runners.OpenApiClient.Utils.Abstract;
 using Soenneker.Utils.Dotnet.Abstract;
 using Soenneker.Utils.Environment;
-using Soenneker.Utils.Process.Abstract;
 using System;
 using System.IO;
 using System.Linq;
@@ -29,21 +28,19 @@ public sealed class FileOperationsUtil : IFileOperationsUtil
     private readonly IConfiguration _configuration;
     private readonly IGitUtil _gitUtil;
     private readonly IDotnetUtil _dotnetUtil;
-    private readonly IProcessUtil _processUtil;
     private readonly IKiotaUtil _kiotaUtil;
     private readonly IFileUtil _fileUtil;
     private readonly IDirectoryUtil _directoryUtil;
     private readonly IOpenApiMerger _openApiMerger;
     private readonly IOpenApiFixer _openApiFixer;
 
-    public FileOperationsUtil(ILogger<FileOperationsUtil> logger, IConfiguration configuration, IGitUtil gitUtil, IDotnetUtil dotnetUtil, IProcessUtil processUtil,
-        IFileUtil fileUtil, IDirectoryUtil directoryUtil, IOpenApiMerger openApiMerger, IOpenApiFixer openApiFixer, IKiotaUtil kiotaUtil)
+    public FileOperationsUtil(ILogger<FileOperationsUtil> logger, IConfiguration configuration, IGitUtil gitUtil, IDotnetUtil dotnetUtil, IFileUtil fileUtil,
+        IDirectoryUtil directoryUtil, IOpenApiMerger openApiMerger, IOpenApiFixer openApiFixer, IKiotaUtil kiotaUtil)
     {
         _logger = logger;
         _configuration = configuration;
         _gitUtil = gitUtil;
         _dotnetUtil = dotnetUtil;
-        _processUtil = processUtil;
         _kiotaUtil = kiotaUtil;
         _fileUtil = fileUtil;
         _directoryUtil = directoryUtil;
@@ -53,7 +50,8 @@ public sealed class FileOperationsUtil : IFileOperationsUtil
 
     public async ValueTask Process(CancellationToken cancellationToken = default)
     {
-        string gitDirectory = await _gitUtil.CloneToTempDirectory($"https://github.com/soenneker/{Constants.Library.ToLowerInvariantFast()}", cancellationToken: cancellationToken);
+        string gitDirectory = await _gitUtil.CloneToTempDirectory($"https://github.com/soenneker/{Constants.Library.ToLowerInvariantFast()}",
+            cancellationToken: cancellationToken);
 
         string targetFilePath = Path.Combine(gitDirectory, "openapi.json");
 
@@ -79,22 +77,26 @@ public sealed class FileOperationsUtil : IFileOperationsUtil
 
         await DeleteAllExceptCsproj(srcDirectory, cancellationToken);
 
-        await _kiotaUtil.Generate(fixedFilePath, "PayPalOpenApiClient", Constants.Library, gitDirectory, cancellationToken).NoSync();
+        await _kiotaUtil.Generate(fixedFilePath, "PayPalOpenApiClient", Constants.Library, gitDirectory, cancellationToken)
+                        .NoSync();
 
-        await BuildAndPush(gitDirectory, cancellationToken).NoSync();
+        await BuildAndPush(gitDirectory, cancellationToken)
+            .NoSync();
     }
 
     private static (string gitUrl, string? repositorySubdirectory) ResolveGitRepositorySource(string source)
     {
         if (Uri.TryCreate(source, UriKind.Absolute, out Uri? uri) && uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
         {
-            string[] segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            string[] segments = uri.AbsolutePath.Trim('/')
+                                   .Split('/', StringSplitOptions.RemoveEmptyEntries);
 
             if (segments.Length >= 2)
             {
                 string gitUrl = $"https://github.com/{segments[0]}/{segments[1]}";
 
-                if (segments.Length >= 5 && segments[2].Equals("tree", StringComparison.OrdinalIgnoreCase))
+                if (segments.Length >= 5 && segments[2]
+                        .Equals("tree", StringComparison.OrdinalIgnoreCase))
                 {
                     string repositorySubdirectory = string.Join(Path.DirectorySeparatorChar, segments.Skip(4));
                     return (gitUrl, repositorySubdirectory);
